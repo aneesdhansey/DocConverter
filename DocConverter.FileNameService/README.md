@@ -8,10 +8,11 @@ This service extracts department section IDs from source file names and converts
 
 ## Features
 
-- Parses filenames in the format `XXX-YYYY.doc` where:
+- Parses filenames in the format `XXX-YYYY` (with any extension) where:
   - `XXX` is the department section ID
   - `YYYY` is the document number
 - Converts to: `{DepartmentName}_{DepartmentSection}_{XXX}_{YYYY}.pdf`
+- Sanitizes department names to remove invalid filename characters
 - Loads all department info at startup for performance
 - Graceful error handling - returns original filename on any error
 - Uses Dapper for efficient database access

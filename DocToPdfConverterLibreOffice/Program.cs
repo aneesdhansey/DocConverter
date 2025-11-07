@@ -352,7 +352,12 @@ class Program
             // Rename it to the desired output name if different
             var sourceFileName = Path.GetFileNameWithoutExtension(inputPath);
             var tempPdfPath = Path.Combine(outputDirectory, $"{sourceFileName}.pdf");
-            if (tempPdfPath != outputPath && File.Exists(tempPdfPath))
+            
+            // Normalize paths for comparison to handle case sensitivity and path separators
+            var normalizedTempPath = Path.GetFullPath(tempPdfPath);
+            var normalizedOutputPath = Path.GetFullPath(outputPath);
+            
+            if (!string.Equals(normalizedTempPath, normalizedOutputPath, StringComparison.OrdinalIgnoreCase) && File.Exists(tempPdfPath))
             {
                 // Delete target file if it exists
                 if (File.Exists(outputPath))
