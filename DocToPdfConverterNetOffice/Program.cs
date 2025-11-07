@@ -5,6 +5,7 @@ using NetOffice.WordApi.Enums;
 using System.Reflection;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using DocConverter.FileNameService;
 
 namespace DocToPdfConverterNetOffice;
 
@@ -102,17 +103,21 @@ class Program
 
             Log.Information("Found {Count} .doc file(s) to convert", docFiles.Length);
 
+            // Initialize file name converter service
+            var fileNameConverterService = new FileNameConverterService(configuration);
+            Log.Information("File name converter service initialized");
+
             // Start conversion
             var stopwatch = Stopwatch.StartNew();
             List<ConversionResult> results;
 
             if (enableParallel)
             {
-                results = ProcessFilesInParallel(docFiles, outputDirectory, maxDegreeOfParallelism, chunkSize);
+                results = ProcessFilesInParallel(docFiles, outputDirectory, maxDegreeOfParallelism, chunkSize, fileNameConverterService);
             }
             else
             {
-                results = ProcessFilesSequentially(docFiles, outputDirectory);
+                results = ProcessFilesSequentially(docFiles, outputDirectory, fileNameConverterService);
             }
 
             stopwatch.Stop();
@@ -160,7 +165,7 @@ class Program
         }
     }
 
-    static List<ConversionResult> ProcessFilesSequentially(string[] docFiles, string outputDirectory)
+    static List<ConversionResult> ProcessFilesSequentially(string[] docFiles, string outputDirectory, IFileNameConverterService fileNameConverterService)
     {
         var results = new List<ConversionResult>();
         var totalFiles = docFiles.Length;
@@ -170,7 +175,7 @@ class Program
         for (int i = 0; i < docFiles.Length; i++)
         {
             var docFile = docFiles[i];
-            var result = ConvertDocToPdfSafe(docFile, outputDirectory);
+            var result = ConvertDocToPdfSafe(docFile, outputDirectory, fileNameConverterService);
             results.Add(result);
 
             // Report progress every 5%
@@ -184,7 +189,7 @@ class Program
         return results;
     }
 
-    static List<ConversionResult> ProcessFilesInParallel(string[] docFiles, string outputDirectory, int maxDegreeOfParallelism, int chunkSize)
+    static List<ConversionResult> ProcessFilesInParallel(string[] docFiles, string outputDirectory, int maxDegreeOfParallelism, int chunkSize, IFileNameConverterService fileNameConverterService)
     {
         var results = new ConcurrentBag<ConversionResult>();
         var totalFiles = docFiles.Length;
@@ -218,7 +223,7 @@ class Program
 
             Parallel.ForEach(chunk, options, (docFile) =>
      {
-         var result = ConvertDocToPdfSafe(docFile, outputDirectory);
+         var result = ConvertDocToPdfSafe(docFile, outputDirectory, fileNameConverterService);
          results.Add(result);
 
          var currentProcessed = Interlocked.Increment(ref processedFiles);
@@ -252,12 +257,13 @@ class Program
         return results.ToList();
     }
 
-    static ConversionResult ConvertDocToPdfSafe(string docFile, string outputDirectory)
+    static ConversionResult ConvertDocToPdfSafe(string docFile, string outputDirectory, IFileNameConverterService fileNameConverterService)
     {
         try
         {
-            var fileName = Path.GetFileNameWithoutExtension(docFile);
-            var pdfFile = Path.Combine(outputDirectory, $"{fileName}.pdf");
+            var sourceFileName = Path.GetFileName(docFile);
+            var convertedFileName = fileNameConverterService.GetConvertedFileName(sourceFileName);
+            var pdfFile = Path.Combine(outputDirectory, convertedFileName);
 
             // Smart skip logic: Check if PDF exists AND is newer than source file
             if (File.Exists(pdfFile))

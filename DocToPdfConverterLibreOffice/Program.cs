@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Reflection;
 using System.Collections.Concurrent;
+using DocConverter.FileNameService;
 
 namespace DocToPdfConverterLibreOffice;
 
@@ -112,9 +113,13 @@ class Program
 
             Log.Information("Found {Count} document file(s) to convert", docFiles.Length);
 
+            // Initialize file name converter service
+            var fileNameConverterService = new FileNameConverterService(configuration);
+            Log.Information("File name converter service initialized");
+
             // Start conversion with parallel processing
             var stopwatch = Stopwatch.StartNew();
-            var results = ProcessFilesInParallel(docFiles, outputDirectory, libreOfficePath, maxDegreeOfParallelism, chunkSize, timeoutSeconds);
+            var results = ProcessFilesInParallel(docFiles, outputDirectory, libreOfficePath, maxDegreeOfParallelism, chunkSize, timeoutSeconds, fileNameConverterService);
             stopwatch.Stop();
 
             // Calculate statistics
@@ -161,7 +166,7 @@ class Program
     }
 
     static List<ConversionResult> ProcessFilesInParallel(string[] docFiles, string outputDirectory, string libreOfficePath,
-    int maxDegreeOfParallelism, int chunkSize, int timeoutSeconds)
+    int maxDegreeOfParallelism, int chunkSize, int timeoutSeconds, IFileNameConverterService fileNameConverterService)
     {
         var results = new ConcurrentBag<ConversionResult>();
         var totalFiles = docFiles.Length;
@@ -187,7 +192,7 @@ class Program
 
             Parallel.ForEach(chunk, options, (docFile) =>
                  {
-                     var result = ConvertDocToPdfSafe(libreOfficePath, docFile, outputDirectory, timeoutSeconds);
+                     var result = ConvertDocToPdfSafe(libreOfficePath, docFile, outputDirectory, timeoutSeconds, fileNameConverterService);
                      results.Add(result);
 
                      var currentProcessed = Interlocked.Increment(ref processedFiles);
@@ -218,12 +223,13 @@ class Program
         return results.ToList();
     }
 
-    static ConversionResult ConvertDocToPdfSafe(string libreOfficePath, string docFile, string outputDirectory, int timeoutSeconds)
+    static ConversionResult ConvertDocToPdfSafe(string libreOfficePath, string docFile, string outputDirectory, int timeoutSeconds, IFileNameConverterService fileNameConverterService)
     {
         try
         {
-            var fileName = Path.GetFileNameWithoutExtension(docFile);
-            var pdfFile = Path.Combine(outputDirectory, $"{fileName}.pdf");
+            var sourceFileName = Path.GetFileName(docFile);
+            var convertedFileName = fileNameConverterService.GetConvertedFileName(sourceFileName);
+            var pdfFile = Path.Combine(outputDirectory, convertedFileName);
 
 
             // Smart skip logic: Check if PDF exists AND is newer than source file
@@ -252,7 +258,7 @@ class Program
                 }
             }
 
-            ConvertDocToPdf(libreOfficePath, docFile, outputDirectory, timeoutSeconds);
+            ConvertDocToPdf(libreOfficePath, docFile, pdfFile, timeoutSeconds);
 
             return new ConversionResult
             {
@@ -272,11 +278,12 @@ class Program
         }
     }
 
-    static void ConvertDocToPdf(string libreOfficePath, string inputPath, string outputDirectory, int timeoutSeconds)
+    static void ConvertDocToPdf(string libreOfficePath, string inputPath, string outputPath, int timeoutSeconds)
     {
         // Create a unique temporary profile directory for this conversion
         // This prevents conflicts when running multiple LibreOffice instances in parallel
         var tempProfileDir = Path.Combine(Path.GetTempPath(), $"LibreOfficeProfile_{Guid.NewGuid()}");
+        var outputDirectory = Path.GetDirectoryName(outputPath) ?? throw new InvalidOperationException("Output path must have a directory");
 
         try
         {
@@ -339,6 +346,20 @@ class Program
       ? errorBuilder.ToString()
              : $"LibreOffice exited with code {process.ExitCode}";
                 throw new Exception($"Conversion failed: {errorMessage}");
+            }
+
+            // LibreOffice creates output with the same base name as input
+            // Rename it to the desired output name if different
+            var sourceFileName = Path.GetFileNameWithoutExtension(inputPath);
+            var tempPdfPath = Path.Combine(outputDirectory, $"{sourceFileName}.pdf");
+            if (tempPdfPath != outputPath && File.Exists(tempPdfPath))
+            {
+                // Delete target file if it exists
+                if (File.Exists(outputPath))
+                {
+                    File.Delete(outputPath);
+                }
+                File.Move(tempPdfPath, outputPath);
             }
         }
         catch (Exception ex)

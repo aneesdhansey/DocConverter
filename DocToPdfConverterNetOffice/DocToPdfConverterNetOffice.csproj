@@ -20,4 +20,8 @@
     <EmbeddedResource Include="appsettings.json" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\DocConverter.FileNameService\DocConverter.FileNameService.csproj" />
+  </ItemGroup>
+
 </Project>
