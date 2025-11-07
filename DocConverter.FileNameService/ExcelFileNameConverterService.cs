@@ -28,6 +28,7 @@ public class ExcelFileNameConverterService : IFileNameConverterService
             }
 
             using var workbook = new XLWorkbook(_excelFilePath);
+            // Use the first worksheet which should contain the department data
             var worksheet = workbook.Worksheets.FirstOrDefault();
             
             if (worksheet == null)
@@ -36,7 +37,16 @@ public class ExcelFileNameConverterService : IFileNameConverterService
             }
 
             // Read data from Excel
-            // Expected columns: DepartmentSectionNumber, DepartmentNumber, DepartmentAbbreviation, SectionAbbreviation
+            // Expected columns (in order): 
+            // 1: DepartmentSectionNumber
+            // 2: DepartmentNumber
+            // 3: DepartmentAbbreviation
+            // 4: SectionAbbreviation
+            const int COL_DEPT_SECTION_NUMBER = 1;
+            const int COL_DEPT_NUMBER = 2;
+            const int COL_DEPT_ABBREV = 3;
+            const int COL_SECTION_ABBREV = 4;
+            
             var rowCount = worksheet.LastRowUsed()?.RowNumber() ?? 0;
             
             // Start from row 2 (assuming row 1 has headers)
@@ -44,10 +54,10 @@ public class ExcelFileNameConverterService : IFileNameConverterService
             {
                 try
                 {
-                    var deptSectionNumber = worksheet.Cell(row, 1).GetValue<int>();
-                    var deptNumber = worksheet.Cell(row, 2).GetValue<int>();
-                    var deptAbbreviation = worksheet.Cell(row, 3).GetValue<string>();
-                    var sectionAbbreviation = worksheet.Cell(row, 4).GetValue<string>();
+                    var deptSectionNumber = worksheet.Cell(row, COL_DEPT_SECTION_NUMBER).GetValue<int>();
+                    var deptNumber = worksheet.Cell(row, COL_DEPT_NUMBER).GetValue<int>();
+                    var deptAbbreviation = worksheet.Cell(row, COL_DEPT_ABBREV).GetValue<string>();
+                    var sectionAbbreviation = worksheet.Cell(row, COL_SECTION_ABBREV).GetValue<string>();
 
                     var dept = new ExcelDepartment
                     {
