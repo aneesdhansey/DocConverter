@@ -103,9 +103,25 @@ class Program
 
             Log.Information("Found {Count} .doc file(s) to convert", docFiles.Length);
 
-            // Initialize file name converter service
-            var fileNameConverterService = new FileNameConverterService(configuration);
-            Log.Information("File name converter service initialized");
+            // Initialize file name converter service based on configuration
+            var fileNameConverterType = configuration.GetValue<string>("Converter:FileNameConverterType", "Database");
+            IFileNameConverterService fileNameConverterService;
+            
+            if (fileNameConverterType.Equals("Excel", StringComparison.OrdinalIgnoreCase))
+            {
+                var excelFilePath = configuration.GetValue<string>("Converter:ExcelFilePath");
+                fileNameConverterService = new ExcelFileNameConverterService(excelFilePath);
+                Log.Information("File name converter service initialized (Excel mode)");
+                if (!string.IsNullOrWhiteSpace(excelFilePath))
+                {
+                    Log.Information("Excel file path: {ExcelFilePath}", excelFilePath);
+                }
+            }
+            else
+            {
+                fileNameConverterService = new FileNameConverterService(configuration);
+                Log.Information("File name converter service initialized (Database mode)");
+            }
 
             // Start conversion
             var stopwatch = Stopwatch.StartNew();
