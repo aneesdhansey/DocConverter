@@ -52,6 +52,12 @@ public class FileNameConverterService : IFileNameConverterService
     {
         try
         {
+            // Handle null or empty input
+            if (string.IsNullOrWhiteSpace(sourceFileName))
+            {
+                return sourceFileName ?? string.Empty;
+            }
+
             // Extract the file name without extension
             var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(sourceFileName);
             
@@ -85,8 +91,8 @@ public class FileNameConverterService : IFileNameConverterService
         }
         catch (Exception)
         {
-            // Any exception during conversion, return original filename
-            return sourceFileName;
+            // Any exception during conversion, return original filename (or empty if null)
+            return sourceFileName ?? string.Empty;
         }
     }
 }

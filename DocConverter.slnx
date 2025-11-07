@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="DocToPdfConverterNetOffice/DocToPdfConverterNetOffice.csproj" />
+  <Project Path="DocConverter.FileNameService.Tests/DocConverter.FileNameService.Tests.csproj" />
   <Project Path="DocConverter.FileNameService/DocConverter.FileNameService.csproj" />
   <Project Path="DocToPdfConverterLibreOffice/DocToPdfConverterLibreOffice.csproj" />
 </Solution>
