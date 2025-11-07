@@ -1,22 +1,29 @@
 using Microsoft.Extensions.Configuration;
-using Moq;
 using Xunit;
 
 namespace DocConverter.FileNameService.Tests;
 
 public class FileNameConverterServiceTests
 {
+    private static IConfiguration CreateConfiguration(string? connectionString = null)
+    {
+        var configBuilder = new ConfigurationBuilder();
+        if (connectionString != null)
+        {
+            configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "ConnectionStrings:DefaultConnection", connectionString }
+            });
+        }
+        return configBuilder.Build();
+    }
+
     [Fact]
     public void GetConvertedFileName_WithValidFormat_ReturnsOriginalWhenNoDatabaseConnection()
     {
         // Arrange
-        var mockConfiguration = new Mock<IConfiguration>();
-        var mockConnectionStringsSection = new Mock<IConfigurationSection>();
-        
-        mockConnectionStringsSection.Setup(x => x.Value).Returns((string)null);
-        mockConfiguration.Setup(x => x.GetSection("ConnectionStrings")).Returns(mockConnectionStringsSection.Object);
-        
-        var service = new FileNameConverterService(mockConfiguration.Object);
+        var configuration = CreateConfiguration();
+        var service = new FileNameConverterService(configuration);
 
         // Act
         var result = service.GetConvertedFileName("123-456.doc");
@@ -29,13 +36,8 @@ public class FileNameConverterServiceTests
     public void GetConvertedFileName_WithInvalidFormat_ReturnsOriginalFileName()
     {
         // Arrange
-        var mockConfiguration = new Mock<IConfiguration>();
-        var mockConnectionStringsSection = new Mock<IConfigurationSection>();
-        
-        mockConnectionStringsSection.Setup(x => x.Value).Returns((string)null);
-        mockConfiguration.Setup(x => x.GetSection("ConnectionStrings")).Returns(mockConnectionStringsSection.Object);
-        
-        var service = new FileNameConverterService(mockConfiguration.Object);
+        var configuration = CreateConfiguration();
+        var service = new FileNameConverterService(configuration);
 
         // Act & Assert
         Assert.Equal("invalid.doc", service.GetConvertedFileName("invalid.doc"));
@@ -49,33 +51,25 @@ public class FileNameConverterServiceTests
     public void GetConvertedFileName_WithException_ReturnsOriginalFileName()
     {
         // Arrange
-        var mockConfiguration = new Mock<IConfiguration>();
-        var mockConnectionStringsSection = new Mock<IConfigurationSection>();
-        
-        mockConnectionStringsSection.Setup(x => x.Value).Returns((string)null);
-        mockConfiguration.Setup(x => x.GetSection("ConnectionStrings")).Returns(mockConnectionStringsSection.Object);
-        
-        var service = new FileNameConverterService(mockConfiguration.Object);
+        var configuration = CreateConfiguration();
+        var service = new FileNameConverterService(configuration);
 
         // Act - even with null, the service should handle it gracefully
-        var result = service.GetConvertedFileName(null);
+        var result = service.GetConvertedFileName(null!);
 
-        // Assert - should not throw exception and return original
+        // Assert - should not throw exception and return empty string
         Assert.NotNull(result);
+        Assert.Equal(string.Empty, result);
     }
 
     [Fact]
     public void Constructor_WithNoConnectionString_DoesNotThrow()
     {
-        // Arrange
-        var mockConfiguration = new Mock<IConfiguration>();
-        var mockConnectionStringsSection = new Mock<IConfigurationSection>();
+        // Arrange & Act
+        var configuration = CreateConfiguration();
+        var service = new FileNameConverterService(configuration);
         
-        mockConnectionStringsSection.Setup(x => x.Value).Returns((string)null);
-        mockConfiguration.Setup(x => x.GetSection("ConnectionStrings")).Returns(mockConnectionStringsSection.Object);
-        
-        // Act & Assert - should not throw
-        var service = new FileNameConverterService(mockConfiguration.Object);
+        // Assert - should not throw
         Assert.NotNull(service);
     }
 
@@ -83,13 +77,8 @@ public class FileNameConverterServiceTests
     public void GetConvertedFileName_WithValidFormatButNoDepartmentData_ReturnsOriginalFileName()
     {
         // Arrange
-        var mockConfiguration = new Mock<IConfiguration>();
-        var mockConnectionStringsSection = new Mock<IConfigurationSection>();
-        
-        mockConnectionStringsSection.Setup(x => x.Value).Returns((string)null);
-        mockConfiguration.Setup(x => x.GetSection("ConnectionStrings")).Returns(mockConnectionStringsSection.Object);
-        
-        var service = new FileNameConverterService(mockConfiguration.Object);
+        var configuration = CreateConfiguration();
+        var service = new FileNameConverterService(configuration);
 
         // Act
         var result = service.GetConvertedFileName("999-888.doc");

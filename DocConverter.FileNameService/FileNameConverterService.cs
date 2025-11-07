@@ -48,6 +48,23 @@ public class FileNameConverterService : IFileNameConverterService
         }
     }
 
+    private static string SanitizeForFileName(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+
+        // Replace invalid filename characters with underscore
+        var invalidChars = Path.GetInvalidFileNameChars();
+        foreach (var c in invalidChars)
+        {
+            input = input.Replace(c, '_');
+        }
+
+        return input;
+    }
+
     public string GetConvertedFileName(string sourceFileName)
     {
         try
@@ -84,8 +101,12 @@ public class FileNameConverterService : IFileNameConverterService
                 return sourceFileName;
             }
 
+            // Sanitize department names to ensure valid filename
+            var sanitizedDepartmentName = SanitizeForFileName(department.DepartmentName);
+            var sanitizedDepartmentSection = SanitizeForFileName(department.DepartmentSection);
+
             // Build the new filename: {DepartmentName}_{DepartmentSection}_{XXX}_{YYYY}.pdf
-            var newFileName = $"{department.DepartmentName}_{department.DepartmentSection}_{departmentSectionId}_{docNumber}.pdf";
+            var newFileName = $"{sanitizedDepartmentName}_{sanitizedDepartmentSection}_{departmentSectionId}_{docNumber}.pdf";
             
             return newFileName;
         }
